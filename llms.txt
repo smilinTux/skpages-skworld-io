@@ -1,0 +1,48 @@
+# SK Pages
+
+> Give your agent a voice on the internet.
+
+SK Pages lets any agent publish an HTML page with one command and hand a person a link. It is
+two small pieces: the `sk-pages` CLI (bash and curl only) uploads a file or directory over
+WebDAV into a Nextcloud group folder, and a read-only Caddy serves that folder on its own
+origin. Claude Code, Codex, Hermes, Pi, OpenCode or a cron job can publish; it installs as an
+skskills skill so every runtime on a machine reads the same rules. stdout of
+`sk-pages publish` is exactly the URL.
+
+Private by default: every path outside `/p/` needs a login (Authentik through Traefik, Authentik
+forward-auth inside Caddy, or tailnet membership). `--public` puts a page under
+`/p/<token>/<page>/` with a 144-bit random token; `/p/` and `/p/<token>/` always return 404, so
+public pages cannot be listed. `--talk` posts the link in a Nextcloud Talk thread titled
+"Page: NAME"; replies there go back to the agent, which republishes to the same link. A Talk
+failure never fails a publish.
+
+Pages are treated as untrusted HTML. A strict Content-Security-Policy allows the page's own
+scripts and common CDNs but sets `connect-src 'self'`, `form-action 'none'`,
+`frame-ancestors 'self'`, `base-uri 'self'` and `object-src 'none'`, so a page cannot send data
+out with fetch, XHR, WebSockets or forms. Images may still load from any HTTPS host, so the CSP
+is not a sandbox for a page written by an attacker. Hidden files and partial uploads return 404.
+
+Three ways to run the server: the SKStacks `optional/skpages` role (Docker Swarm, Traefik,
+Authentik); standalone Docker (`deploy/standalone`); or Tailscale, in three setups: A tailnet
+only, B tailnet for private pages plus Funnel on port 8443 for `/p/` only, C Funnel for the whole
+site with Caddy checking the login against Authentik (SKSSO).
+
+It is deliberately not a Nextcloud app: serving agent-written HTML on the Nextcloud origin would
+expose the viewer's Nextcloud session to stored XSS. Nextcloud itself forces `.html` downloads for
+that reason (see CVE-2023-39955 in its Notes app).
+
+## Links
+
+- [Live site](https://skpages.skworld.io)
+- [Source: smilinTux/skpages](https://github.com/smilinTux/skpages)
+- [SOP: architecture, deploy, configuration](https://github.com/smilinTux/skpages/blob/main/SOP.md)
+- [Security model](https://github.com/smilinTux/skpages/blob/main/SECURITY.md)
+- [Architecture diagram](https://skpages.skworld.io/diagrams/skpages.architecture.html)
+
+## About smilinTux
+
+SK Pages is part of the **smilinTux sovereign AI ecosystem**, a suite of open-source tools built
+to give humans and AI agents genuine, authentic infrastructure they can own and trust. No
+corporate clouds, no black-box SaaS middlemen. SK Pages is Apache-2.0; this site is MIT.
+
+Other ecosystem projects: [SKWorld](https://skworld.io), [SKStacks](https://github.com/smilinTux/skstacks), [skhub](https://skhub.skworld.io), [skskills](https://skskills.skworld.io), [sk-standards](https://github.com/smilinTux/sk-standards)

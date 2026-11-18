@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://skpages.skworld.io/sitemap.xml

@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SK Pages Architecture",
+    "subtitle": "An agent publishes over WebDAV into a Nextcloud group folder; a read-only Caddy serves it on its own origin, private behind a login, public only under /p/<token>/",
+    "output": "skpages.architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "agent",
+      "type": "external",
+      "label": "Agent",
+      "sublabel": "Claude Code, Codex, Hermes, Pi, cron",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "cli",
+      "type": "backend",
+      "label": "sk-pages CLI",
+      "sublabel": "bash + curl",
+      "pos": [
+        300,
+        200
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "nextcloud",
+      "type": "database",
+      "label": "Nextcloud group folder",
+      "sublabel": "skpages/, versioned, WebDAV",
+      "pos": [
+        580,
+        200
+      ],
+      "size": [
+        220,
+        64
+      ]
+    },
+    {
+      "id": "talk",
+      "type": "messagebus",
+      "label": "Nextcloud Talk",
+      "sublabel": "thread 'Page: NAME'",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        200,
+        64
+      ]
+    },
+    {
+      "id": "caddy",
+      "type": "backend",
+      "label": "Caddy :8080",
+      "sublabel": "read-only docroot, CSP, admin off",
+      "pos": [
+        580,
+        400
+      ],
+      "size": [
+        220,
+        64
+      ]
+    },
+    {
+      "id": "front",
+      "type": "cloud",
+      "label": "TLS front",
+      "sublabel": "Traefik / tailscale serve / funnel",
+      "pos": [
+        300,
+        400
+      ],
+      "size": [
+        210,
+        64
+      ]
+    },
+    {
+      "id": "sso",
+      "type": "security",
+      "label": "Authentik forward-auth",
+      "sublabel": "Traefik or Caddy; or tailnet membership",
+      "pos": [
+        300,
+        580
+      ],
+      "size": [
+        220,
+        64
+      ]
+    },
+    {
+      "id": "person",
+      "type": "frontend",
+      "label": "Person",
+      "sublabel": "browser",
+      "pos": [
+        40,
+        400
+      ],
+      "size": [
+        190,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "agent host",
+      "wraps": [
+        "agent",
+        "cli"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "pages origin (separate from Nextcloud)",
+      "wraps": [
+        "front",
+        "caddy",
+        "sso"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "agent-to-cli",
+      "from": "agent",
+      "to": "cli",
+      "label": "sk-pages publish",
+      "variant": "default"
+    },
+    {
+      "id": "cli-to-nc",
+      "from": "cli",
+      "to": "nextcloud",
+      "label": "WebDAV PUT / MKCOL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cli-to-talk",
+      "from": "cli",
+      "to": "talk",
+      "label": "--talk: post the link",
+      "variant": "dashed"
+    },
+    {
+      "id": "nc-to-caddy",
+      "from": "nextcloud",
+      "to": "caddy",
+      "label": "bind mount, read-only",
+      "variant": "default"
+    },
+    {
+      "id": "person-to-front",
+      "from": "person",
+      "to": "front",
+      "label": "HTTPS /agent/page/ or /p/token/page/",
+      "variant": "default"
+    },
+    {
+      "id": "front-to-sso",
+      "from": "front",
+      "to": "sso",
+      "label": "private paths only",
+      "variant": "security"
+    },
+    {
+      "id": "front-to-caddy",
+      "from": "front",
+      "to": "caddy",
+      "label": "page, served with CSP",
+      "variant": "default"
+    },
+    {
+      "id": "talk-to-agent",
+      "from": "talk",
+      "to": "agent",
+      "label": "replies: feedback, republish",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "Private by default",
+      "items": [
+        "Every path outside /p/ needs a login: Authentik through Traefik or Caddy, or the tailnet itself",
+        "/p/ and /p/<token>/ return 404, tokens are 144 random bits, so public pages cannot be listed"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Untrusted HTML",
+      "items": [
+        "Own origin, never the Nextcloud domain, so a page cannot ride the viewer's Nextcloud session",
+        "CSP connect-src 'self' and form-action 'none': no fetch, XHR, WebSocket or form posts to anywhere else"
+      ]
+    }
+  ]
+}
